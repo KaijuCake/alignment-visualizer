@@ -1,0 +1,1473 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Alignment Visualizer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #f3f6f4;
+        --surface: #ffffff;
+        --surface-2: #eaf0ec;
+        --surface-3: #dde7df;
+        --ink: #17251d;
+        --muted: #5c6f63;
+        --line: #d3ded6;
+        --accent: #0c7256;
+        --accent-strong: #095c45;
+        --accent-ink: #ffffff;
+        --accent-soft: #d8efe6;
+        --path: #e9a319;
+        --path-ink: #3d2a02;
+        --match-bg: #d7efdb;
+        --match-ink: #14532d;
+        --mismatch-bg: #fbe3d3;
+        --mismatch-ink: #8a3a10;
+        --gap-bg: #e4e7ea;
+        --gap-ink: #5b6470;
+        --danger: #b3261e;
+        --danger-bg: #fbe9e7;
+        --pred: #2563eb;
+        --shadow: 0 1px 2px rgba(20, 40, 30, 0.06), 0 8px 24px rgba(20, 40, 30, 0.06);
+        --radius-panel: 14px;
+        --radius-control: 9px;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0c1410;
+          --surface: #15211b;
+          --surface-2: #1c2c23;
+          --surface-3: #24382d;
+          --ink: #e4efe7;
+          --muted: #9db3a5;
+          --line: #2b4034;
+          --accent: #34c79a;
+          --accent-strong: #5adbb2;
+          --accent-ink: #06231a;
+          --accent-soft: #173c2f;
+          --path: #f0b429;
+          --path-ink: #2b1e02;
+          --match-bg: #173d26;
+          --match-ink: #8fe3ab;
+          --mismatch-bg: #46271a;
+          --mismatch-ink: #ffb38a;
+          --gap-bg: #2b333b;
+          --gap-ink: #aeb9c4;
+          --danger: #ff9d94;
+          --danger-bg: #47211d;
+          --pred: #7aa8ff;
+          --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
+        }
+      }
+
+      * { box-sizing: border-box; }
+      html { -webkit-text-size-adjust: 100%; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+        font-size: 16px;
+        line-height: 1.55;
+      }
+      .wrap {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 20px 16px 56px;
+      }
+
+      .lede {
+        margin: 4px 0 18px;
+        max-width: 68ch;
+        color: var(--muted);
+        font-size: 1.02rem;
+      }
+      .lede strong { color: var(--ink); }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-panel);
+        box-shadow: var(--shadow);
+        padding: 18px;
+        margin-bottom: 18px;
+      }
+      .panel h2 {
+        margin: 0 0 4px;
+        font-size: 1.08rem;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+      }
+      .panel .sub {
+        margin: 0 0 14px;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      /* ---------- Inputs ---------- */
+      .seq-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+      @media (max-width: 720px) {
+        .seq-grid { grid-template-columns: 1fr; }
+      }
+      label.field-label {
+        display: block;
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 6px;
+      }
+      label.field-label .len {
+        font-weight: 400;
+        color: var(--muted);
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 0.8rem;
+        margin-left: 6px;
+      }
+      textarea.seq {
+        width: 100%;
+        min-height: 76px;
+        resize: vertical;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-control);
+        background: var(--surface);
+        color: var(--ink);
+        font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.98rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      textarea.seq:focus-visible,
+      input[type="number"]:focus-visible,
+      button:focus-visible,
+      input[type="range"]:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      textarea.seq.invalid { border-color: var(--danger); }
+      .field-error {
+        display: none;
+        margin-top: 6px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        background: var(--danger-bg);
+        color: var(--danger);
+        font-size: 0.85rem;
+      }
+      .field-error.show { display: block; }
+
+      .scoring-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        align-items: end;
+        margin-top: 16px;
+      }
+      .score-field { display: flex; flex-direction: column; gap: 4px; }
+      .score-field label { font-size: 0.82rem; font-weight: 600; color: var(--muted); }
+      .score-field input {
+        width: 86px;
+        padding: 8px 10px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-control);
+        background: var(--surface);
+        color: var(--ink);
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 0.95rem;
+      }
+      .presets {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        margin-top: 16px;
+      }
+      .presets .presets-label { font-size: 0.85rem; font-weight: 600; color: var(--muted); margin-right: 2px; }
+
+      button {
+        font: inherit;
+        cursor: pointer;
+        border-radius: var(--radius-control);
+        border: 1px solid var(--line);
+        background: var(--surface-2);
+        color: var(--ink);
+        padding: 8px 14px;
+        font-size: 0.9rem;
+        font-weight: 500;
+      }
+      button:hover { background: var(--surface-3); }
+      button:disabled { opacity: 0.45; cursor: not-allowed; }
+      button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--accent-ink);
+        font-weight: 600;
+        padding: 9px 20px;
+      }
+      button.primary:hover { background: var(--accent-strong); }
+      button.chip { padding: 6px 12px; font-size: 0.85rem; border-radius: 999px; }
+      button.toggle[aria-pressed="true"] {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--accent-ink);
+      }
+
+      .actions-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        margin-top: 18px;
+      }
+      .stale-note {
+        display: none;
+        font-size: 0.85rem;
+        color: var(--mismatch-ink);
+        background: var(--mismatch-bg);
+        padding: 6px 10px;
+        border-radius: 8px;
+      }
+      .stale-note.show { display: inline-block; }
+
+      /* ---------- Matrix controls ---------- */
+      .anim-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+      .anim-controls .spacer { flex: 1 1 auto; }
+      .progress-text {
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 0.82rem;
+        color: var(--muted);
+        white-space: nowrap;
+      }
+      .speed-control {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
+        color: var(--muted);
+        font-weight: 500;
+      }
+      .speed-control input[type="range"] { width: 130px; accent-color: var(--accent); }
+      .speed-value {
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 0.8rem;
+        min-width: 74px;
+      }
+      .progress-track {
+        height: 6px;
+        border-radius: 999px;
+        background: var(--surface-2);
+        overflow: hidden;
+        margin-bottom: 14px;
+      }
+      .progress-fill {
+        height: 100%;
+        width: 0%;
+        background: var(--accent);
+        border-radius: 999px;
+        transition: width 80ms linear;
+      }
+
+      /* ---------- Matrix ---------- */
+      .matrix-scroll {
+        overflow: auto;
+        max-height: 540px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--surface);
+        -webkit-overflow-scrolling: touch;
+      }
+      table.matrix {
+        border-collapse: separate;
+        border-spacing: 0;
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 0.78rem;
+      }
+      table.matrix th,
+      table.matrix td {
+        min-width: 34px;
+        width: 34px;
+        height: 34px;
+        text-align: center;
+        vertical-align: middle;
+        padding: 0;
+        border-right: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+      }
+      table.matrix th {
+        background: var(--surface-2);
+        color: var(--ink);
+        font-weight: 600;
+        position: sticky;
+        z-index: 2;
+      }
+      table.matrix thead th { top: 0; }
+      table.matrix tbody th { left: 0; z-index: 1; }
+      table.matrix thead th.corner { left: 0; z-index: 3; color: var(--muted); font-size: 0.68rem; }
+      table.matrix td.cell {
+        background: var(--surface);
+        color: var(--ink);
+        cursor: pointer;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      table.matrix td.cell.unfilled { color: transparent; cursor: default; }
+      table.matrix td.cell.unfilled::after { content: "·"; color: var(--line); }
+      table.matrix td.cell.filled:hover { box-shadow: inset 0 0 0 2px var(--accent); }
+      table.matrix td.cell.pred {
+        box-shadow: inset 0 0 0 2px var(--pred);
+        background: var(--accent-soft);
+        font-weight: 600;
+      }
+      table.matrix td.cell.current {
+        background: var(--accent);
+        color: var(--accent-ink);
+        font-weight: 700;
+        box-shadow: inset 0 0 0 2px var(--accent-strong);
+      }
+      @media (prefers-reduced-motion: no-preference) {
+        table.matrix td.cell.current { animation: pulse 700ms ease-in-out infinite alternate; }
+        @keyframes pulse {
+          from { filter: brightness(1); }
+          to { filter: brightness(1.25); }
+        }
+      }
+      table.matrix td.cell.path {
+        background: var(--path);
+        color: var(--path-ink);
+        font-weight: 700;
+      }
+      table.matrix td.cell.path.current {
+        background: var(--accent);
+        color: var(--accent-ink);
+      }
+      table.matrix td.cell.selected { box-shadow: inset 0 0 0 2px var(--path); font-weight: 700; }
+
+      .matrix-empty {
+        padding: 36px 18px;
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        margin-top: 12px;
+        font-size: 0.82rem;
+        color: var(--muted);
+      }
+      .legend .swatch {
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        border-radius: 4px;
+        border: 1px solid var(--line);
+        vertical-align: -2px;
+        margin-right: 5px;
+      }
+      .swatch.current { background: var(--accent); }
+      .swatch.pred { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--pred); }
+      .swatch.path { background: var(--path); }
+
+      /* ---------- Cell inspector + tooltip ---------- */
+      .inspector {
+        margin-top: 14px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--surface-2);
+        padding: 12px 14px;
+        font-size: 0.9rem;
+        min-height: 58px;
+      }
+      .inspector .insp-title { font-weight: 600; margin-bottom: 2px; }
+      .inspector .cand {
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 0.84rem;
+        display: block;
+        margin-top: 2px;
+      }
+      .inspector .cand.winner { font-weight: 700; color: var(--accent-strong); }
+      @media (prefers-color-scheme: dark) {
+        .inspector .cand.winner { color: var(--accent-strong); }
+      }
+      .inspector .hint { color: var(--muted); }
+
+      #tooltip {
+        position: fixed;
+        z-index: 50;
+        display: none;
+        max-width: 290px;
+        pointer-events: none;
+        background: var(--ink);
+        color: var(--bg);
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 0.8rem;
+        line-height: 1.45;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      }
+      #tooltip .tt-title { font-weight: 700; margin-bottom: 3px; }
+      #tooltip .cand {
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 0.76rem;
+        display: block;
+      }
+      #tooltip .cand.winner { font-weight: 700; text-decoration: underline; }
+
+      /* ---------- Alignment result ---------- */
+      .stats-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+      .stat {
+        border: 1px solid var(--line);
+        background: var(--surface-2);
+        border-radius: 10px;
+        padding: 8px 14px;
+        min-width: 104px;
+      }
+      .stat .stat-value {
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 1.15rem;
+        font-weight: 600;
+      }
+      .stat .stat-label { font-size: 0.75rem; color: var(--muted); font-weight: 500; }
+
+      .aln-scroll { overflow-x: auto; padding-bottom: 6px; -webkit-overflow-scrolling: touch; }
+      .aln-block { margin-bottom: 14px; }
+      .aln-row {
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 1rem;
+        line-height: 1.5;
+        white-space: nowrap;
+      }
+      .aln-row .row-tag {
+        display: inline-block;
+        width: 58px;
+        font-family: "IBM Plex Sans", system-ui, sans-serif;
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: var(--muted);
+        vertical-align: 2px;
+      }
+      .aln-ch {
+        display: inline-block;
+        width: 1.35ch;
+        text-align: center;
+        border-radius: 3px;
+        margin-right: 1px;
+      }
+      .aln-ch.match { background: var(--match-bg); color: var(--match-ink); font-weight: 600; }
+      .aln-ch.mismatch { background: var(--mismatch-bg); color: var(--mismatch-ink); font-weight: 600; }
+      .aln-ch.gap { background: var(--gap-bg); color: var(--gap-ink); }
+      .aln-ch.mid { background: transparent; font-weight: 400; }
+      .aln-ch.mid.match { color: var(--match-ink); }
+      .aln-ch.mid.mismatch { color: var(--mismatch-ink); }
+      .aln-ch.mid.gap { color: var(--gap-ink); }
+
+      /* ---------- How it works ---------- */
+      .how-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 16px;
+      }
+      @media (max-width: 860px) {
+        .how-grid { grid-template-columns: 1fr; }
+      }
+      .how-grid h3 { margin: 0 0 6px; font-size: 0.98rem; }
+      .how-grid p { margin: 0; color: var(--muted); font-size: 0.92rem; }
+      .recurrence {
+        margin-top: 16px;
+        border: 1px solid var(--line);
+        background: var(--surface-2);
+        border-radius: 10px;
+        padding: 14px 16px;
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 0.88rem;
+        line-height: 1.7;
+      }
+      .recurrence .r-label {
+        font-family: "IBM Plex Sans", system-ui, sans-serif;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--muted);
+        display: block;
+        margin-bottom: 6px;
+      }
+      .fn-note { margin-top: 12px; color: var(--muted); font-size: 0.88rem; }
+      .fn-note code {
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 0.84em;
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        padding: 1px 5px;
+      }
+
+      .hidden { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <p class="lede">
+        <strong>Align two DNA sequences, one cell at a time.</strong>
+        This runs the Needleman–Wunsch global alignment algorithm — written from scratch below,
+        no alignment libraries — and lets you watch the scoring matrix fill in, inspect how every
+        score was derived, and trace the optimal path back out.
+      </p>
+
+      <!-- ============ INPUTS ============ -->
+      <section class="panel" aria-labelledby="inputs-heading">
+        <h2 id="inputs-heading">Sequences &amp; scoring</h2>
+        <p class="sub">DNA only (A, C, G, T), up to 200 bases each — the matrix grows as length&nbsp;A × length&nbsp;B, so the cap keeps things instant.</p>
+
+        <div class="seq-grid">
+          <div>
+            <label class="field-label" for="seqA">Sequence A <span class="len" id="lenA"></span></label>
+            <textarea class="seq" id="seqA" spellcheck="false" autocomplete="off" autocapitalize="characters" placeholder="e.g. GATTACA"></textarea>
+            <div class="field-error" id="errA" role="alert"></div>
+          </div>
+          <div>
+            <label class="field-label" for="seqB">Sequence B <span class="len" id="lenB"></span></label>
+            <textarea class="seq" id="seqB" spellcheck="false" autocomplete="off" autocapitalize="characters" placeholder="e.g. GACTACA"></textarea>
+            <div class="field-error" id="errB" role="alert"></div>
+          </div>
+        </div>
+
+        <div class="scoring-row">
+          <div class="score-field">
+            <label for="scoreMatch">Match</label>
+            <input type="number" id="scoreMatch" value="2" step="1" />
+          </div>
+          <div class="score-field">
+            <label for="scoreMismatch">Mismatch</label>
+            <input type="number" id="scoreMismatch" value="-1" step="1" />
+          </div>
+          <div class="score-field">
+            <label for="scoreGap">Gap</label>
+            <input type="number" id="scoreGap" value="-2" step="1" />
+          </div>
+          <div class="field-error" id="errScore" role="alert" style="flex: 1 1 220px;"></div>
+        </div>
+
+        <div class="presets">
+          <span class="presets-label">Try an example:</span>
+          <button type="button" class="chip" data-preset="0">One SNP</button>
+          <button type="button" class="chip" data-preset="1">Needs a gap</button>
+          <button type="button" class="chip" data-preset="2">Longer pair</button>
+        </div>
+
+        <div class="actions-row">
+          <button type="button" class="primary" id="btnAlign">Align sequences</button>
+          <span class="stale-note" id="staleNote">Inputs changed — press “Align sequences” to recompute.</span>
+        </div>
+      </section>
+
+      <!-- ============ MATRIX ============ -->
+      <section class="panel" aria-labelledby="matrix-heading">
+        <h2 id="matrix-heading">Scoring matrix</h2>
+        <p class="sub">Each cell holds the best score for aligning the first <em>i</em> bases of A with the first <em>j</em> bases of B. Hover or tap any filled cell to see exactly how its score was derived.</p>
+
+        <div class="anim-controls">
+          <button type="button" id="btnPlay">▶ Play</button>
+          <button type="button" id="btnStep">Step +1</button>
+          <button type="button" id="btnReset">Reset</button>
+          <button type="button" id="btnFill">Fill instantly</button>
+          <button type="button" id="btnPath" class="toggle" aria-pressed="false">Show traceback path</button>
+          <span class="spacer"></span>
+          <label class="speed-control" for="speedRange">
+            Speed
+            <input type="range" id="speedRange" min="1" max="120" value="24" />
+            <span class="speed-value" id="speedValue">24 cells/s</span>
+          </label>
+          <span class="progress-text" id="progressText"></span>
+        </div>
+        <div class="progress-track" aria-hidden="true"><div class="progress-fill" id="progressFill"></div></div>
+
+        <div class="matrix-scroll" id="matrixScroll">
+          <div class="matrix-empty" id="matrixEmpty">Press “Align sequences” to build the matrix.</div>
+          <table class="matrix hidden" id="matrixTable" aria-label="Needleman-Wunsch scoring matrix"></table>
+        </div>
+
+        <div class="legend" aria-hidden="true">
+          <span><span class="swatch current"></span>Current cell</span>
+          <span><span class="swatch pred"></span>Its three predecessors</span>
+          <span><span class="swatch path"></span>Traceback path</span>
+        </div>
+
+        <div class="inspector" id="inspector" aria-live="polite">
+          <span class="hint">Hover or tap a filled cell and its derivation will appear here.</span>
+        </div>
+      </section>
+
+      <!-- ============ RESULT ============ -->
+      <section class="panel hidden" id="resultPanel" aria-labelledby="result-heading">
+        <h2 id="result-heading">Optimal alignment</h2>
+        <p class="sub">Read down each column: identical bases are matches, different bases are mismatches, and “–” is a gap inserted to make the sequences line up.</p>
+
+        <div class="stats-row" id="statsRow"></div>
+        <div class="aln-scroll" id="alnDisplay"></div>
+
+        <div class="legend" aria-hidden="true">
+          <span><span class="swatch" style="background: var(--match-bg);"></span>Match</span>
+          <span><span class="swatch" style="background: var(--mismatch-bg);"></span>Mismatch</span>
+          <span><span class="swatch" style="background: var(--gap-bg);"></span>Gap</span>
+        </div>
+      </section>
+
+      <!-- ============ HOW IT WORKS ============ -->
+      <section class="panel" aria-labelledby="how-heading">
+        <h2 id="how-heading">How it works</h2>
+        <p class="sub">The undergraduate version — three ideas and one formula.</p>
+
+        <div class="how-grid">
+          <div>
+            <h3>1. Break it into subproblems</h3>
+            <p>
+              Aligning two whole sequences looks hard, but the best alignment of the first
+              <em>i</em> bases of A with the first <em>j</em> bases of B only depends on three
+              smaller answers: align one fewer base from both, from A only, or from B only.
+              Dynamic programming just means: solve the tiny problems first, store every answer
+              in a table, and build up. That table is the matrix above.
+            </p>
+          </div>
+          <div>
+            <h3>2. Score every choice</h3>
+            <p>
+              Each cell takes the best of three moves — diagonal (pair the two bases: match bonus
+              or mismatch penalty), up (a base of A opposite a gap), or left (a gap opposite a
+              base of B). The first row and column are pure gaps, so they simply accumulate the
+              gap penalty. Change the scoring above and the “best” alignment can change with it.
+            </p>
+          </div>
+          <div>
+            <h3>3. Trace the path back</h3>
+            <p>
+              The bottom-right cell holds the optimal score, but not the alignment itself. While
+              filling, each cell remembers which neighbor it came from. Starting at the
+              bottom-right and following those arrows back to the top-left corner spells out the
+              alignment: diagonal steps pair two bases, up/left steps insert a gap. Ties here are
+              broken diagonal → up → left.
+            </p>
+          </div>
+        </div>
+
+        <div class="recurrence">
+          <span class="r-label">The recurrence — the whole algorithm in one line</span>
+          F(i, j) = max {&nbsp; F(i−1, j−1) + score(A[i], B[j]),&nbsp; F(i−1, j) + gap,&nbsp; F(i, j−1) + gap &nbsp;}
+        </div>
+
+        <p class="fn-note">
+          In the code, the algorithm lives in three pure functions you can test on their own:
+          <code>buildScoringMatrix</code> fills the table and records where each cell came from,
+          <code>traceback</code> walks the arrows back into two aligned strings, and
+          <code>formatAlignment</code> turns those strings into the color-coded display, percent
+          identity, and gap count. Cost: O(n × m) time and memory — the reason for the 200-base cap.
+        </p>
+      </section>
+    </main>
+
+    <div id="tooltip" role="tooltip"></div>
+
+    <script>
+      "use strict";
+
+      /* =====================================================================
+         Pure Needleman–Wunsch algorithm.
+
+         These three functions know nothing about the DOM, so they can be
+         unit-tested (or lifted into another project) as-is:
+           buildScoringMatrix(seqA, seqB, scoring) -> { score, trace }
+           traceback(data, seqA, seqB)             -> { alignedA, alignedB, path, score }
+           formatAlignment(alignedA, alignedB)     -> stats + display strings
+
+         Recurrence (all indices 1-based into the sequences):
+           F(i, j) = max(
+             F(i-1, j-1) + (A[i] === B[j] ? match : mismatch),  // diagonal: pair the bases
+             F(i-1, j)   + gap,                                 // up:       A[i] vs a gap
+             F(i, j-1)   + gap                                  // left:     a gap vs B[j]
+           )
+         F(i, 0) = i * gap and F(0, j) = j * gap (aligning against all gaps).
+         Ties are broken diagonal, then up, then left — a fixed, documented
+         choice, since ties mean several alignments share the optimal score.
+         ===================================================================== */
+
+      /**
+       * Fill the (n+1) x (m+1) dynamic-programming table for seqA x seqB.
+       * Returns the score matrix plus a parallel "trace" matrix recording,
+       * for each cell, which predecessor produced its value:
+       * 'diag' | 'up' | 'left' (null only at the origin).
+       */
+      function buildScoringMatrix(seqA, seqB, scoring) {
+        var n = seqA.length;
+        var m = seqB.length;
+        var score = [];
+        var trace = [];
+        var i, j;
+
+        // Allocate rows and seed the origin.
+        for (i = 0; i <= n; i++) {
+          score.push(new Array(m + 1).fill(0));
+          trace.push(new Array(m + 1).fill(null));
+        }
+        score[0][0] = 0;
+
+        // First column / row: aligning a prefix against nothing but gaps.
+        for (i = 1; i <= n; i++) {
+          score[i][0] = i * scoring.gap;
+          trace[i][0] = "up";
+        }
+        for (j = 1; j <= m; j++) {
+          score[0][j] = j * scoring.gap;
+          trace[0][j] = "left";
+        }
+
+        // Main fill, row-major: every cell reads only already-computed neighbors.
+        for (i = 1; i <= n; i++) {
+          for (j = 1; j <= m; j++) {
+            var pairScore = seqA[i - 1] === seqB[j - 1] ? scoring.match : scoring.mismatch;
+            var diag = score[i - 1][j - 1] + pairScore;
+            var up = score[i - 1][j] + scoring.gap;
+            var left = score[i][j - 1] + scoring.gap;
+
+            // >= ordering implements the diagonal > up > left tie-break.
+            if (diag >= up && diag >= left) {
+              score[i][j] = diag;
+              trace[i][j] = "diag";
+            } else if (up >= left) {
+              score[i][j] = up;
+              trace[i][j] = "up";
+            } else {
+              score[i][j] = left;
+              trace[i][j] = "left";
+            }
+          }
+        }
+        return { score: score, trace: trace };
+      }
+
+      /**
+       * Walk the trace pointers from the bottom-right cell (n, m) back to
+       * (0, 0), emitting the two aligned strings (with '-' for gaps) and
+       * the list of visited cells, in forward order.
+       */
+      function traceback(data, seqA, seqB) {
+        var i = seqA.length;
+        var j = seqB.length;
+        var revA = [];
+        var revB = [];
+        var revPath = [];
+
+        while (i > 0 || j > 0) {
+          revPath.push([i, j]);
+          var dir = data.trace[i][j];
+          if (i > 0 && j > 0 && dir === "diag") {
+            revA.push(seqA[i - 1]);
+            revB.push(seqB[j - 1]);
+            i--; j--;
+          } else if (i > 0 && (dir === "up" || j === 0)) {
+            // Base of A aligned against a gap in B.
+            revA.push(seqA[i - 1]);
+            revB.push("-");
+            i--;
+          } else {
+            // Base of B aligned against a gap in A.
+            revA.push("-");
+            revB.push(seqB[j - 1]);
+            j--;
+          }
+        }
+        revPath.push([0, 0]);
+
+        return {
+          alignedA: revA.reverse().join(""),
+          alignedB: revB.reverse().join(""),
+          path: revPath.reverse(),
+          score: data.score[seqA.length][seqB.length]
+        };
+      }
+
+      /**
+       * Turn two aligned strings (equal length, '-' for gaps) into the
+       * middle "match line" and the summary statistics for display.
+       * A column is a gap column if either side is '-'.
+       */
+      function formatAlignment(alignedA, alignedB) {
+        var length = alignedA.length;
+        var mid = [];
+        var matches = 0;
+        var mismatches = 0;
+        var gaps = 0;
+
+        for (var k = 0; k < length; k++) {
+          var a = alignedA[k];
+          var b = alignedB[k];
+          if (a === "-" || b === "-") {
+            gaps++;
+            mid.push(" ");
+          } else if (a === b) {
+            matches++;
+            mid.push("|");
+          } else {
+            mismatches++;
+            mid.push("·");
+          }
+        }
+
+        return {
+          alignedA: alignedA,
+          alignedB: alignedB,
+          midline: mid.join(""),
+          length: length,
+          matches: matches,
+          mismatches: mismatches,
+          gaps: gaps,
+          identity: length > 0 ? (matches / length) * 100 : 0
+        };
+      }
+
+      /* =====================================================================
+         UI layer — everything below wires the pure functions to the page.
+         ===================================================================== */
+
+      var MAX_LEN = 200;
+      var BASES = "ACGT";
+
+      var PRESETS = [
+        { name: "One SNP", a: "GATTACA", b: "GACTACA" },
+        { name: "Needs a gap", a: "ACGTACGTACGT", b: "ACGACGTACGT" },
+        { name: "Longer pair", a: "ACGTACGTACGTTAGC", b: "ACGTTTGTACGTAAGC" }
+      ];
+
+      // Central UI state. `step` counts how many cells (in row-major order,
+      // including the initialized border) are currently revealed.
+      var state = {
+        seqA: "",
+        seqB: "",
+        scoring: { match: 2, mismatch: -1, gap: -2 },
+        data: null,        // output of buildScoringMatrix
+        result: null,      // output of traceback
+        formatted: null,   // output of formatAlignment
+        cellEls: [],       // 2D array of <td> references for cheap repainting
+        step: 0,
+        total: 0,
+        playing: false,
+        timer: null,
+        showPath: false,
+        speed: 24,         // cells per second
+        selected: null     // [i, j] of the last hovered/tapped cell
+      };
+
+      function $(id) { return document.getElementById(id); }
+      var els = {
+        seqA: $("seqA"), seqB: $("seqB"),
+        lenA: $("lenA"), lenB: $("lenB"),
+        errA: $("errA"), errB: $("errB"), errScore: $("errScore"),
+        scoreMatch: $("scoreMatch"), scoreMismatch: $("scoreMismatch"), scoreGap: $("scoreGap"),
+        btnAlign: $("btnAlign"), staleNote: $("staleNote"),
+        btnPlay: $("btnPlay"), btnStep: $("btnStep"), btnReset: $("btnReset"),
+        btnFill: $("btnFill"), btnPath: $("btnPath"),
+        speedRange: $("speedRange"), speedValue: $("speedValue"),
+        progressText: $("progressText"), progressFill: $("progressFill"),
+        matrixScroll: $("matrixScroll"), matrixEmpty: $("matrixEmpty"), matrixTable: $("matrixTable"),
+        inspector: $("inspector"), tooltip: $("tooltip"),
+        resultPanel: $("resultPanel"), statsRow: $("statsRow"), alnDisplay: $("alnDisplay")
+      };
+
+      /* ---------------- validation ---------------- */
+
+      // Strip whitespace, uppercase, and check alphabet + length.
+      // Returns { value } on success or { error } with a readable message.
+      function validateSequence(raw, label) {
+        var cleaned = raw.replace(/\s+/g, "").toUpperCase();
+        if (cleaned.length === 0) {
+          return { error: label + " is empty — paste a DNA sequence or pick an example." };
+        }
+        if (cleaned.length > MAX_LEN) {
+          return {
+            error: label + " is " + cleaned.length + " bases long; the cap is " + MAX_LEN +
+              ", because the scoring matrix needs length A × length B cells."
+          };
+        }
+        var bad = [];
+        for (var k = 0; k < cleaned.length; k++) {
+          if (BASES.indexOf(cleaned[k]) === -1 && bad.indexOf(cleaned[k]) === -1) bad.push(cleaned[k]);
+        }
+        if (bad.length > 0) {
+          return {
+            error: label + " contains invalid character" + (bad.length > 1 ? "s" : "") +
+              " “" + bad.join("”, “") + "” — DNA sequences here use A, C, G, T only."
+          };
+        }
+        return { value: cleaned };
+      }
+
+      function showError(el, msg) {
+        el.textContent = msg || "";
+        el.classList.toggle("show", !!msg);
+      }
+
+      function readScoring() {
+        var match = parseInt(els.scoreMatch.value, 10);
+        var mismatch = parseInt(els.scoreMismatch.value, 10);
+        var gap = parseInt(els.scoreGap.value, 10);
+        if (isNaN(match) || isNaN(mismatch) || isNaN(gap)) {
+          showError(els.errScore, "Scoring values must be whole numbers.");
+          return null;
+        }
+        showError(els.errScore, "");
+        return { match: match, mismatch: mismatch, gap: gap };
+      }
+
+      function updateLenLabels() {
+        var a = els.seqA.value.replace(/\s+/g, "").length;
+        var b = els.seqB.value.replace(/\s+/g, "").length;
+        els.lenA.textContent = a ? a + " / " + MAX_LEN + " bases" : "";
+        els.lenB.textContent = b ? b + " / " + MAX_LEN + " bases" : "";
+      }
+
+      /* ---------------- alignment run ---------------- */
+
+      // Validate inputs, run the three pure functions, and rebuild the matrix DOM.
+      // opts.instant: reveal everything (used by presets and first load).
+      function runAlignment(opts) {
+        opts = opts || {};
+        stopPlayback();
+
+        var va = validateSequence(els.seqA.value, "Sequence A");
+        var vb = validateSequence(els.seqB.value, "Sequence B");
+        showError(els.errA, va.error || "");
+        showError(els.errB, vb.error || "");
+        els.seqA.classList.toggle("invalid", !!va.error);
+        els.seqB.classList.toggle("invalid", !!vb.error);
+        if (va.error || vb.error) return false;
+
+        var scoring = readScoring();
+        if (!scoring) return false;
+
+        state.seqA = va.value;
+        state.seqB = vb.value;
+        state.scoring = scoring;
+        state.data = buildScoringMatrix(state.seqA, state.seqB, scoring);
+        state.result = traceback(state.data, state.seqA, state.seqB);
+        state.formatted = formatAlignment(state.result.alignedA, state.result.alignedB);
+        state.total = (state.seqA.length + 1) * (state.seqB.length + 1);
+        state.showPath = false;
+        els.btnPath.setAttribute("aria-pressed", "false");
+        els.btnPath.textContent = "Show traceback path";
+
+        buildMatrixDOM();
+        // buildMatrixDOM replaced every cell element, so the reveal counter
+        // must restart too — otherwise setStep would skip the first cells.
+        state.step = 0;
+        state.selected = null;
+        els.staleNote.classList.remove("show");
+        els.resultPanel.classList.add("hidden");
+        setInspectorHint();
+
+        if (opts.instant) {
+          revealAll();
+          showTraceback(true);
+        } else {
+          setStep(0);
+          startPlayback();
+        }
+        return true;
+      }
+
+      /* ---------------- matrix rendering ---------------- */
+
+      // Build the table skeleton once per run; scores are painted in
+      // incrementally by paintCell so animation never re-renders the grid.
+      function buildMatrixDOM() {
+        var n = state.seqA.length;
+        var m = state.seqB.length;
+        var html = ["<thead><tr><th class='corner'>A \\ B</th>"];
+        var i, j;
+
+        // Column headers: a gap column, then one header per base of B.
+        html.push("<th>–</th>");
+        for (j = 0; j < m; j++) html.push("<th>" + state.seqB[j] + "</th>");
+        html.push("</tr></thead><tbody>");
+
+        state.cellEls = [];
+        for (i = 0; i <= n; i++) {
+          var rowLabel = i === 0 ? "–" : state.seqA[i - 1];
+          html.push("<tr><th>" + rowLabel + "</th>");
+          var rowEls = [];
+          for (j = 0; j <= m; j++) {
+            html.push("<td class='cell unfilled' data-i='" + i + "' data-j='" + j + "'></td>");
+            rowEls.push(null); // filled with real elements after innerHTML
+          }
+          html.push("</tr>");
+          state.cellEls.push(rowEls);
+        }
+        html.push("</tbody>");
+        els.matrixTable.innerHTML = html.join("");
+
+        // Cache element references for fast class/text updates during animation.
+        var tds = els.matrixTable.querySelectorAll("td.cell");
+        for (var k = 0; k < tds.length; k++) {
+          var ci = parseInt(tds[k].getAttribute("data-i"), 10);
+          var cj = parseInt(tds[k].getAttribute("data-j"), 10);
+          state.cellEls[ci][cj] = tds[k];
+        }
+
+        els.matrixEmpty.classList.add("hidden");
+        els.matrixTable.classList.remove("hidden");
+        updateControls();
+      }
+
+      function paintCell(i, j) {
+        var td = state.cellEls[i][j];
+        if (!td || !state.data) return;
+        td.textContent = state.data.score[i][j];
+        td.classList.remove("unfilled");
+        td.classList.add("filled");
+        if (state.showPath && isOnPath(i, j)) td.classList.add("path");
+      }
+
+      function unpaintCell(i, j) {
+        var td = state.cellEls[i][j];
+        if (!td) return;
+        td.textContent = "";
+        td.className = "cell unfilled";
+      }
+
+      function isOnPath(i, j) {
+        if (!state.result) return false;
+        // Path length is at most n + m + 1, so a linear scan is fine.
+        for (var k = 0; k < state.result.path.length; k++) {
+          if (state.result.path[k][0] === i && state.result.path[k][1] === j) return true;
+        }
+        return false;
+      }
+
+      // Set how many cells are revealed, painting/unpainting only the delta,
+      // then refresh the current/predecessor highlight and progress readouts.
+      function setStep(next) {
+        if (!state.data) return;
+        next = Math.max(0, Math.min(state.total, next));
+        var cols = state.seqB.length + 1;
+        var idx;
+
+        if (next > state.step) {
+          for (idx = state.step; idx < next; idx++) {
+            paintCell(Math.floor(idx / cols), idx % cols);
+          }
+        } else if (next < state.step) {
+          for (idx = next; idx < state.step; idx++) {
+            unpaintCell(Math.floor(idx / cols), idx % cols);
+          }
+        }
+        state.step = next;
+        refreshHighlights();
+        updateProgress();
+        updateControls();
+        if (state.step >= state.total) onFillComplete();
+      }
+
+      function refreshHighlights() {
+        // Clear the previous highlight classes.
+        var old = els.matrixTable.querySelectorAll("td.current, td.pred");
+        for (var k = 0; k < old.length; k++) old[k].classList.remove("current", "pred");
+
+        if (!state.data || state.step === 0 || state.step > state.total) return;
+        var cols = state.seqB.length + 1;
+        var idx = state.step - 1; // most recently filled cell
+        var i = Math.floor(idx / cols);
+        var j = idx % cols;
+        var cur = state.cellEls[i][j];
+        if (cur) cur.classList.add("current");
+
+        // The three predecessors the current cell was computed from.
+        var preds = [[i - 1, j - 1], [i - 1, j], [i, j - 1]];
+        for (var p = 0; p < preds.length; p++) {
+          var pi = preds[p][0], pj = preds[p][1];
+          if (pi >= 0 && pj >= 0) {
+            var el = state.cellEls[pi][pj];
+            if (el && el.classList.contains("filled")) el.classList.add("pred");
+          }
+        }
+      }
+
+      function updateProgress() {
+        if (!state.data) {
+          els.progressText.textContent = "";
+          els.progressFill.style.width = "0%";
+          return;
+        }
+        els.progressText.textContent = "Filled " + state.step + " of " + state.total + " cells";
+        els.progressFill.style.width = (state.total ? (state.step / state.total) * 100 : 0) + "%";
+      }
+
+      function updateControls() {
+        var has = !!state.data;
+        els.btnPlay.disabled = !has;
+        els.btnStep.disabled = !has;
+        els.btnReset.disabled = !has;
+        els.btnFill.disabled = !has;
+        els.btnPath.disabled = !has;
+        els.btnPlay.textContent = state.playing ? "⏸ Pause" :
+          (has && state.step >= state.total ? "↻ Replay" : "▶ Play");
+      }
+
+      /* ---------------- animation ---------------- */
+
+      function startPlayback() {
+        if (!state.data) return;
+        if (state.step >= state.total) setStep(0); // replay from the top
+        state.playing = true;
+        updateControls();
+        stopTimerOnly();
+        state.timer = setInterval(tick, 50);
+      }
+
+      function tick() {
+        // Advance a batch sized by the speed slider (cells per second).
+        var batch = Math.max(1, Math.round(state.speed / 20));
+        setStep(state.step + batch);
+        if (state.step >= state.total) stopPlayback();
+      }
+
+      function stopTimerOnly() {
+        if (state.timer !== null) {
+          clearInterval(state.timer);
+          state.timer = null;
+        }
+      }
+
+      function stopPlayback() {
+        stopTimerOnly();
+        state.playing = false;
+        updateControls();
+      }
+
+      function onFillComplete() {
+        // The finished matrix gets its traceback and alignment automatically;
+        // the path toggle can still hide/show the highlight afterwards.
+        showTraceback(true);
+      }
+
+      function revealAll() {
+        stopPlayback();
+        setStep(state.total);
+      }
+
+      function showTraceback(on) {
+        state.showPath = on;
+        els.btnPath.setAttribute("aria-pressed", on ? "true" : "false");
+        els.btnPath.textContent = on ? "Hide traceback path" : "Show traceback path";
+        if (!state.data) return;
+
+        // Traceback only makes sense on a fully filled matrix.
+        if (on && state.step < state.total) setStep(state.total);
+
+        for (var k = 0; k < state.result.path.length; k++) {
+          var i = state.result.path[k][0];
+          var j = state.result.path[k][1];
+          var td = state.cellEls[i][j];
+          if (td) td.classList.toggle("path", on);
+        }
+        refreshHighlights();
+        if (on) renderResult();
+      }
+
+      /* ---------------- cell inspector & tooltip ---------------- */
+
+      // Human-readable derivation for one cell: the arithmetic behind its score.
+      // Returns { title, lines: [{text, winner}], note }.
+      function describeCell(i, j) {
+        var s = state.scoring;
+        var score = state.data.score;
+        var lines = [];
+        var title = "Cell (" + i + ", " + j + ") = " + score[i][j];
+        var note = "";
+
+        if (i === 0 && j === 0) {
+          note = "The origin: aligning nothing with nothing scores 0.";
+          return { title: title, lines: lines, note: note };
+        }
+        if (i === 0) {
+          note = "Top row: the first " + j + " base" + (j > 1 ? "s" : "") +
+            " of B aligned against gaps only, so the gap penalty accumulates: " +
+            j + " × (" + s.gap + ") = " + score[0][j] + ".";
+          return { title: title, lines: lines, note: note };
+        }
+        if (j === 0) {
+          note = "First column: the first " + i + " base" + (i > 1 ? "s" : "") +
+            " of A aligned against gaps only: " + i + " × (" + s.gap + ") = " + score[i][0] + ".";
+          return { title: title, lines: lines, note: note };
+        }
+
+        var a = state.seqA[i - 1];
+        var b = state.seqB[j - 1];
+        var isMatch = a === b;
+        var pair = isMatch ? s.match : s.mismatch;
+        var dir = state.data.trace[i][j];
+
+        lines.push({
+          text: "↖ Diagonal: " + score[i - 1][j - 1] + " + (" + pair + " for " +
+            a + (isMatch ? " = " : " ≠ ") + b + (isMatch ? ", match" : ", mismatch") +
+            ") = " + (score[i - 1][j - 1] + pair),
+          winner: dir === "diag"
+        });
+        lines.push({
+          text: "↑ Up: " + score[i - 1][j] + " + (" + s.gap + " gap, " + a + " vs –) = " +
+            (score[i - 1][j] + s.gap),
+          winner: dir === "up"
+        });
+        lines.push({
+          text: "← Left: " + score[i][j - 1] + " + (" + s.gap + " gap, – vs " + b + ") = " +
+            (score[i][j - 1] + s.gap),
+          winner: dir === "left"
+        });
+        note = "Winner: " +
+          (dir === "diag" ? "diagonal — pair " + a + " with " + b + "." :
+            dir === "up" ? "up — align " + a + " against a gap in B." :
+              "left — align " + b + " against a gap in A.");
+        return { title: title, lines: lines, note: note };
+      }
+
+      function setInspectorHint() {
+        els.inspector.innerHTML =
+          "<span class='hint'>Hover or tap a filled cell and its derivation will appear here.</span>";
+      }
+
+      function inspectCell(i, j) {
+        state.selected = [i, j];
+        var prev = els.matrixTable.querySelector("td.selected");
+        if (prev) prev.classList.remove("selected");
+        var td = state.cellEls[i][j];
+        if (td) td.classList.add("selected");
+
+        if (!state.data || !td || !td.classList.contains("filled")) {
+          els.inspector.innerHTML =
+            "<span class='hint'>Cell (" + i + ", " + j + ") hasn't been computed yet — " +
+            "play or step the fill animation to reach it.</span>";
+          hideTooltip();
+          return;
+        }
+
+        var d = describeCell(i, j);
+        var html = "<div class='insp-title'>" + d.title + "</div>";
+        for (var k = 0; k < d.lines.length; k++) {
+          html += "<span class='cand" + (d.lines[k].winner ? " winner" : "") + "'>" +
+            d.lines[k].text + (d.lines[k].winner ? " ✓" : "") + "</span>";
+        }
+        if (d.note) html += "<div>" + d.note + "</div>";
+        els.inspector.innerHTML = html;
+      }
+
+      function showTooltip(i, j, clientX, clientY) {
+        if (!state.data) return;
+        var td = state.cellEls[i][j];
+        if (!td || !td.classList.contains("filled")) {
+          els.tooltip.style.display = "none";
+          return;
+        }
+        var d = describeCell(i, j);
+        var html = "<div class='tt-title'>" + d.title + "</div>";
+        for (var k = 0; k < d.lines.length; k++) {
+          html += "<span class='cand" + (d.lines[k].winner ? " winner" : "") + "'>" +
+            d.lines[k].text + (d.lines[k].winner ? " ✓" : "") + "</span>";
+        }
+        if (d.note) html += "<div>" + d.note + "</div>";
+        els.tooltip.innerHTML = html;
+        els.tooltip.style.display = "block";
+
+        // Keep the tooltip on screen: flip near the right/bottom edges.
+        var pad = 14;
+        var rect = els.tooltip.getBoundingClientRect();
+        var x = clientX + pad;
+        var y = clientY + pad;
+        if (x + rect.width > window.innerWidth - 8) x = clientX - rect.width - pad;
+        if (y + rect.height > window.innerHeight - 8) y = clientY - rect.height - pad;
+        els.tooltip.style.left = Math.max(4, x) + "px";
+        els.tooltip.style.top = Math.max(4, y) + "px";
+      }
+
+      function hideTooltip() { els.tooltip.style.display = "none"; }
+
+      // Event delegation: one listener serves every cell, however large the grid.
+      els.matrixTable.addEventListener("mouseover", function (ev) {
+        var td = ev.target.closest ? ev.target.closest("td.cell") : null;
+        if (!td) return;
+        var i = parseInt(td.getAttribute("data-i"), 10);
+        var j = parseInt(td.getAttribute("data-j"), 10);
+        inspectCell(i, j);
+        showTooltip(i, j, ev.clientX, ev.clientY);
+      });
+      els.matrixTable.addEventListener("mousemove", function (ev) {
+        if (els.tooltip.style.display !== "block" || !state.selected) return;
+        showTooltip(state.selected[0], state.selected[1], ev.clientX, ev.clientY);
+      });
+      els.matrixTable.addEventListener("mouseleave", hideTooltip);
+      // Taps on touch devices: click fires without a preceding hover.
+      els.matrixTable.addEventListener("click", function (ev) {
+        var td = ev.target.closest ? ev.target.closest("td.cell") : null;
+        if (!td) return;
+        inspectCell(
+          parseInt(td.getAttribute("data-i"), 10),
+          parseInt(td.getAttribute("data-j"), 10)
+        );
+      });
+
+      /* ---------------- result rendering ---------------- */
+
+      function renderResult() {
+        var f = state.formatted;
+        if (!f) return;
+
+        var stats = [
+          { label: "Alignment score", value: state.result.score },
+          { label: "Aligned length", value: f.length },
+          { label: "Matches", value: f.matches },
+          { label: "Mismatches", value: f.mismatches },
+          { label: "Gap columns", value: f.gaps },
+          { label: "Percent identity", value: f.identity.toFixed(1) + "%" }
+        ];
+        els.statsRow.innerHTML = stats.map(function (s) {
+          return "<div class='stat'><div class='stat-value'>" + s.value +
+            "</div><div class='stat-label'>" + s.label + "</div></div>";
+        }).join("");
+
+        // Render in blocks of 50 columns so the three rows stay aligned
+        // when the alignment is longer than the screen is wide.
+        var BLOCK = 50;
+        var html = "";
+        for (var start = 0; start < f.length; start += BLOCK) {
+          var aSlice = f.alignedA.slice(start, start + BLOCK);
+          var mSlice = f.midline.slice(start, start + BLOCK);
+          var bSlice = f.alignedB.slice(start, start + BLOCK);
+          html += "<div class='aln-block'>" +
+            alnRow("Seq A", aSlice, bSlice, false) +
+            alnRow("", mSlice, bSlice, true) +
+            alnRow("Seq B", bSlice, aSlice, false) +
+            "</div>";
+        }
+        els.alnDisplay.innerHTML = html;
+        els.resultPanel.classList.remove("hidden");
+      }
+
+      // One row of the stacked alignment. Column class is decided by
+      // comparing this row's character with the other row's at that column.
+      function alnRow(tag, chars, other, isMid) {
+        var out = "<div class='aln-row'><span class='row-tag'>" + tag + "</span>";
+        for (var k = 0; k < chars.length; k++) {
+          var c = chars[k];
+          var cls;
+          if (isMid) {
+            cls = "aln-ch mid " + (c === "|" ? "match" : c === "·" ? "mismatch" : "gap");
+            out += "<span class='" + cls + "'>" + (c === " " ? "&nbsp;" : c) + "</span>";
+          } else {
+            var o = other[k];
+            cls = (c === "-" || o === "-") ? "gap" : c === o ? "match" : "mismatch";
+            out += "<span class='aln-ch " + cls + "'>" + c + "</span>";
+          }
+        }
+        return out + "</div>";
+      }
+
+      /* ---------------- controls wiring ---------------- */
+
+      els.btnAlign.addEventListener("click", function () { runAlignment(); });
+
+      els.btnPlay.addEventListener("click", function () {
+        if (state.playing) stopPlayback();
+        else startPlayback();
+      });
+
+      els.btnStep.addEventListener("click", function () {
+        if (!state.data) return;
+        stopPlayback();
+        if (state.step >= state.total) setStep(0);
+        setStep(state.step + 1);
+        var cols = state.seqB.length + 1;
+        var idx = state.step - 1;
+        if (idx >= 0) inspectCell(Math.floor(idx / cols), idx % cols);
+      });
+
+      els.btnReset.addEventListener("click", function () {
+        if (!state.data) return;
+        stopPlayback();
+        state.showPath = false;
+        els.btnPath.setAttribute("aria-pressed", "false");
+        els.btnPath.textContent = "Show traceback path";
+        setStep(0);
+        els.resultPanel.classList.add("hidden");
+        setInspectorHint();
+      });
+
+      els.btnFill.addEventListener("click", function () {
+        if (!state.data) return;
+        revealAll();
+      });
+
+      els.btnPath.addEventListener("click", function () {
+        if (!state.data) return;
+        stopPlayback();
+        showTraceback(!state.showPath);
+        if (!state.showPath) {
+          // Hiding the path keeps the filled matrix but drops the result panel,
+          // since the alignment display belongs with the traced path.
+          els.resultPanel.classList.add("hidden");
+        }
+      });
+
+      els.speedRange.addEventListener("input", function () {
+        state.speed = parseInt(els.speedRange.value, 10);
+        els.speedValue.textContent = state.speed + " cells/s";
+      });
+
+      // Mark results stale (rather than silently wrong) when inputs change.
+      function markStale() {
+        updateLenLabels();
+        if (state.data) els.staleNote.classList.add("show");
+      }
+      els.seqA.addEventListener("input", markStale);
+      els.seqB.addEventListener("input", markStale);
+      els.scoreMatch.addEventListener("input", markStale);
+      els.scoreMismatch.addEventListener("input", markStale);
+      els.scoreGap.addEventListener("input", markStale);
+
+      var presetButtons = document.querySelectorAll("[data-preset]");
+      for (var p = 0; p < presetButtons.length; p++) {
+        presetButtons[p].addEventListener("click", function () {
+          var preset = PRESETS[parseInt(this.getAttribute("data-preset"), 10)];
+          els.seqA.value = preset.a;
+          els.seqB.value = preset.b;
+          updateLenLabels();
+          runAlignment({ instant: true });
+        });
+      }
+
+      /* ---------------- first load: preset 1, fully revealed ---------------- */
+      els.seqA.value = PRESETS[0].a;
+      els.seqB.value = PRESETS[0].b;
+      state.speed = parseInt(els.speedRange.value, 10);
+      updateLenLabels();
+      runAlignment({ instant: true });
+    </script>
+  </body>
+</html>
